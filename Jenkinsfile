@@ -1,17 +1,14 @@
 pipeline {
     agent any
-
     environment {
         GITHUB_TOKEN = credentials('github-token')
     }
-
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-
         stage('Build') {
             steps {
                 script {
@@ -29,14 +26,12 @@ pipeline {
                 }
             }
         }
-
         stage('Push to Docker Hub') {
             steps {
                 script {
                     // Get branch name with fallback
                     def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceAll('origin/', '')
                     echo "Pushing Docker images for branch: ${branchName}"
-
                     // Use withCredentials for secure Docker login
                     withCredentials([
                         usernamePassword(
@@ -67,18 +62,30 @@ pipeline {
                 }
             }
         }
-
         stage('Deploy') {
             when {
                 anyOf {
                     branch 'dev'
-                    branch 'main'
+                    branch 'main' 
+                    branch 'master'
+                    // Add expression to handle cases where branch detection fails
+                    expression { 
+                        def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceAll('origin/', '')
+                        return branchName == 'dev' || branchName == 'main' || branchName == 'master'
+                    }
+                    // Handle the HEAD case from your logs
+                    expression {
+                        return env.GIT_BRANCH?.contains('dev') || env.GIT_BRANCH?.contains('main')
+                    }
                 }
             }
             steps {
                 script {
                     def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceAll('origin/', '')
                     echo "Deploying for branch: ${branchName}"
+                    echo "Available environment variables:"
+                    echo "BRANCH_NAME: ${env.BRANCH_NAME}"
+                    echo "GIT_BRANCH: ${env.GIT_BRANCH}"
                     
                     // Fix permission issue for deploy script
                     sh 'chmod +x deploy.sh'
@@ -87,7 +94,6 @@ pipeline {
             }
         }
     }
-
     post {
         always {
             script {
