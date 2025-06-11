@@ -21,6 +21,10 @@ pipeline {
                     def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceAll('origin/', '')
                     echo "Building for branch: ${branchName}"
                     
+                    // Check Docker access
+                    sh 'docker --version'
+                    sh 'docker info'
+                    
                     // Fix permission issue by making scripts executable
                     sh 'chmod +x build.sh'
                     sh './build.sh'
