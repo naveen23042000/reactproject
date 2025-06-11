@@ -2,9 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_USERNAME = credentials('docker-hub-username')
-        DOCKER_PASSWORD = credentials('docker-hub-password')
-        GITHUB_TOKEN    = credentials('github-token')
+        GITHUB_TOKEN = credentials('github-token')
     }
 
     stages {
@@ -39,36 +37,32 @@ pipeline {
                     def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceAll('origin/', '')
                     echo "Pushing Docker images for branch: ${branchName}"
 
-                    // Login to Docker Hub with better error handling
-                    sh """
-                        echo "Attempting to login to Docker Hub..."
-                        echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin
-                        echo "Docker login successful!"
-                    """
-
-                    // Tag and push images based on branch
-                    if (branchName == 'dev') {
-                        sh """
-                            # Tag the built image for dev repository
-                            docker tag reacttestapp:latest \$DOCKER_USERNAME/dev:dev
-                            docker tag reacttestapp:latest \$DOCKER_USERNAME/dev:latest
-                            
-                            # Push images to dev repository
-                            docker push \$DOCKER_USERNAME/dev:dev
-                            docker push \$DOCKER_USERNAME/dev:latest
-                        """
-                    } else if (branchName == 'main') {
-                        sh """
-                            # Tag the built image for prod repository
-                            docker tag reacttestapp:latest \$DOCKER_USERNAME/prod:prod
-                            docker tag reacttestapp:latest \$DOCKER_USERNAME/prod:latest
-                            
-                            # Push images to prod repository
-                            docker push \$DOCKER_USERNAME/prod:prod
-                            docker push \$DOCKER_USERNAME/prod:latest
-                        """
-                    } else {
-                        echo "No Docker push configured for branch: ${branchName}"
+                    // Use withCredentials for secure Docker login
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'docker-hub-credentials',
+                            usernameVariable: 'DOCKER_USER',
+                            passwordVariable: 'DOCKER_PASS'
+                        )
+                    ]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        '''
+                        
+                        // Push images based on branch
+                        if (branchName == 'dev') {
+                            sh '''
+                                docker push $DOCKER_USER/dev:dev
+                                docker push $DOCKER_USER/dev:latest
+                            '''
+                        } else if (branchName == 'main') {
+                            sh '''
+                                docker push $DOCKER_USER/prod:prod
+                                docker push $DOCKER_USER/prod:latest
+                            '''
+                        } else {
+                            echo "No Docker push configured for branch: ${branchName}"
+                        }
                     }
                 }
             }
