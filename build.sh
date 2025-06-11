@@ -32,4 +32,4 @@ else
     echo "✅ Feature image built successfully!"
 fi
 
-echo "🎉 Build process completed!"
+echo "Build process completed!"
