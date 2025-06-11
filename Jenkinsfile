@@ -39,19 +39,31 @@ pipeline {
                     def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceAll('origin/', '')
                     echo "Pushing Docker images for branch: ${branchName}"
 
-                    // Login to Docker Hub
+                    // Login to Docker Hub with better error handling
                     sh """
+                        echo "Attempting to login to Docker Hub..."
                         echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin
+                        echo "Docker login successful!"
                     """
 
-                    // Push images based on branch
+                    // Tag and push images based on branch
                     if (branchName == 'dev') {
                         sh """
+                            # Tag the built image for dev repository
+                            docker tag reacttestapp:latest \$DOCKER_USERNAME/dev:dev
+                            docker tag reacttestapp:latest \$DOCKER_USERNAME/dev:latest
+                            
+                            # Push images to dev repository
                             docker push \$DOCKER_USERNAME/dev:dev
                             docker push \$DOCKER_USERNAME/dev:latest
                         """
                     } else if (branchName == 'main') {
                         sh """
+                            # Tag the built image for prod repository
+                            docker tag reacttestapp:latest \$DOCKER_USERNAME/prod:prod
+                            docker tag reacttestapp:latest \$DOCKER_USERNAME/prod:latest
+                            
+                            # Push images to prod repository
                             docker push \$DOCKER_USERNAME/prod:prod
                             docker push \$DOCKER_USERNAME/prod:latest
                         """
