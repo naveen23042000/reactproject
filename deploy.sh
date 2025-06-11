@@ -42,4 +42,4 @@ else
     exit 1
 fi
 
-echo "🎉 Deployment completed!"
+echo " Deployment completed!"
